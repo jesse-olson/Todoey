@@ -10,11 +10,22 @@ import UIKit
 
 class ToDoListViewController: UITableViewController {
     
-    var itemList = ["Find mike"]
+    var itemList = [Item]()
 
+    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Item.plist")
+    
+    
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        loadItems()
+        print(dataFilePath)
         // Do any additional setup after loading the view, typically from a nib.
+        
+//        if let items = defaults.array(forKey: "ToDoListArray") as? [String] {
+//            itemList = items
+//        }
+        
     }
 
     override func didReceiveMemoryWarning() {
@@ -26,7 +37,11 @@ class ToDoListViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "toDoItemCell", for: indexPath)
         
-        cell.textLabel?.text = itemList[indexPath.row]
+        let item = itemList[indexPath.row]
+        
+        cell.textLabel?.text = item.name
+        
+        cell.accessoryType = item.done ? .checkmark : .none
         
         return cell
     }
@@ -39,13 +54,11 @@ class ToDoListViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         //print(itemList[indexPath.row])
         
-        if tableView.cellForRow(at: indexPath)?.accessoryType == .checkmark{
-            tableView.cellForRow(at: indexPath)?.accessoryType = .none
-        }
-        else{
-            tableView.cellForRow(at: indexPath)?.accessoryType = .checkmark
-        }
+        itemList[indexPath.row].done = !itemList[indexPath.row].done
         
+        saveItems()
+        
+        tableView.reloadData()
         //Will show the selected row as selected for a second then deselect it.
         tableView.deselectRow(at: indexPath, animated: true)
         
@@ -62,7 +75,13 @@ class ToDoListViewController: UITableViewController {
         
         let action = UIAlertAction(title: "Add item", style: .default) { (action) in
             //What will happen once the user clicks the add button on our UIAlert
-            self.itemList.append(textField.text!)
+            var newItem = Item()
+            
+            newItem.name = textField.text!
+            
+            self.itemList.append(newItem)
+            
+            self.saveItems()
             
             self.tableView.reloadData()
         }
@@ -75,6 +94,31 @@ class ToDoListViewController: UITableViewController {
         alert.addAction(action)
         
         present(alert, animated: true, completion: nil)
+    }
+    
+    func saveItems(){
+        let encoder = PropertyListEncoder()
+        
+        do{
+            let data = try encoder.encode(itemList)
+            try data.write(to: dataFilePath!)
+        }
+        catch{
+            print("Error encoding the array, \(error)")
+        }
+    }
+    
+    func loadItems(){
+        
+        if let data = try? Data(contentsOf: dataFilePath!){
+            let decoder = PropertyListDecoder()
+            do{
+                itemList = try decoder.decode([Item].self, from: data)
+            }
+            catch{
+                print("ERROR")
+            }
+        }
     }
     
 
