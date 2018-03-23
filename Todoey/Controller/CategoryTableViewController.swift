@@ -7,15 +7,15 @@
 //
 
 import UIKit
-import CoreData
+import RealmSwift
 
 class CategoryTableViewController: UITableViewController {
     
+    let realm = try! Realm()
+    
     //MARK: Global Properties
     
-    var categories : [Category] = [Category]()
-    
-    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+    var categories : Results<Category>?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -32,13 +32,11 @@ class CategoryTableViewController: UITableViewController {
         
         let action = UIAlertAction(title: "Add Category", style: .default) { (alert) in
             
-            let newCategory = Category(context: self.context)
+            let newCategory = Category()
             
-            newCategory.name = textField.text
+            newCategory.name = textField.text!
             
-            self.categories.append(newCategory)
-            
-            self.saveCategories()
+            self.saveCategories(category: newCategory)
             
             self.tableView.reloadData()
         }
@@ -65,7 +63,7 @@ class CategoryTableViewController: UITableViewController {
         let destinationVC = segue.destination as! ToDoListViewController
         
         if let indexPath = tableView.indexPathForSelectedRow {
-            destinationVC.selectedCategory = categories[indexPath.row]
+            destinationVC.selectedCategory = categories?[indexPath.row]
         }
     }
     
@@ -76,14 +74,14 @@ class CategoryTableViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         
         //Returning the amount of categories there are to display.
-        return categories.count
+        return categories?.count ?? 1
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
         let cell = tableView.dequeueReusableCell(withIdentifier: "CategoryCell", for: indexPath)
         
-        cell.textLabel?.text = categories[indexPath.row].name
+        cell.textLabel?.text = categories?[indexPath.row].name ?? "No Categories"
         
         return cell
     }
@@ -92,24 +90,21 @@ class CategoryTableViewController: UITableViewController {
     //-----------------------------------------------------------------------------//
     
     //MARK: Data Manipulation Methods
-    
-    func loadCategories(with request: NSFetchRequest<Category> = Category.fetchRequest()){
-        
-        do{
-            categories = try context.fetch(request)
-        }
-        catch{
-            print("Error trying to fetch Categories data, \(error)")
-        }
-        
+
+    func loadCategories(){
+
+        categories = realm.objects(Category.self)
+
         tableView.reloadData()
-        
+
     }
     
-    func saveCategories(){
+    func saveCategories(category: Category){
         
         do{
-            try context.save()
+            try realm.write {
+                realm.add(category)
+            }
         }
         catch{
             print("Error when trying to save category data, \(error)")
